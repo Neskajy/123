@@ -1,0 +1,170 @@
+import datetime
+import time
+from typing import Dict, List, Tuple
+from dataclasses import dataclass
+from enum import Enum
+
+
+@dataclass
+class Activity:
+    time: str
+    description: str
+    completed: bool = False
+
+
+class DaySchedule:
+    def __init__(self):
+        self.activities = []
+        self._init_schedule()
+    
+    def _init_schedule(self):
+        """Инициализация стандартного расписания"""
+        self.activities = [
+            Activity("07:00", "Подъем, умылся"),
+            Activity("07:30", "Завтрак"),
+            Activity("07:40", "Уход на работу"),
+            Activity("08:00", "Пью кофе на работе"),
+            Activity("08:30", "Работа"),
+            Activity("12:00", "Обед, ушел в КГУ"),
+            Activity("13:00", "учеба"),
+            Activity("21:00", "Уход домой"),
+            Activity("21:30", "Ужин"),
+            Activity("22:00", "Домашнняя работа, парралельно развитие в игре Ogame"),
+            Activity("доп", "да две задачи одновременно:)"),
+            Activity("01:00", "вечернее умывание"),
+            Activity("01:30", "Сон"),
+        ]
+    
+    def display_schedule(self, show_current: bool = True):
+        """Отображение расписания в консоли"""
+        print("\n" + "="*50)
+        print(f"РАСПОРЯДОК ДНЯ - {datetime.date.today().strftime('%d.%m.%Y')}")
+        print("="*50)
+        
+        current_time = datetime.datetime.now().time()
+        
+        for i, activity in enumerate(self.activities):
+            # Проверяем, текущее ли это активность
+            is_current = False
+            if show_current:
+                try:
+                    activity_time = datetime.datetime.strptime(activity.time, "%H:%M").time()
+                    next_time = (datetime.datetime.strptime(
+                        self.activities[i+1].time, "%H:%M"
+                    ) if i+1 < len(self.activities) else datetime.time(23, 59)).time()
+                    
+                    if activity_time <= current_time < next_time:
+                        is_current = True
+                except:
+                    pass
+            
+            # Форматируем вывод
+            status = "✓" if activity.completed else "○"
+            status_color = "\033[92m" if activity.completed else "\033[90m"
+            time_color = "\033[94m"
+            desc_color = "\033[93m" if is_current else "\033[97m"
+            reset_color = "\033[0m"
+            
+            if is_current:
+                print(f"{time_color}▶ {activity.time:<6}{reset_color} {desc_color}{activity.description:<30}{reset_color} {status_color}{status}{reset_color} ← СЕЙЧАС")
+            else:
+                print(f"{time_color}  {activity.time:<6}{reset_color} {desc_color}{activity.description:<30}{reset_color} {status_color}{status}{reset_color}")
+        
+        print("="*50)
+        print("Легенда: ○ - запланировано, ✓ - выполнено")
+    
+    def mark_completed(self, activity_index: int):
+        """Отметить активность как выполненную"""
+        if 0 <= activity_index < len(self.activities):
+            self.activities[activity_index].completed = True
+            print(f"Активность '{self.activities[activity_index].description}' отмечена как выполненная!")
+    
+    def add_activity(self, time: str, description: str):
+        """Добавить новую активность"""
+        new_activity = Activity(time, description)
+        self.activities.append(new_activity)
+        self.activities.sort(key=lambda x: x.time)
+        print(f"Добавлена новая активность: {time} - {description}")
+    
+    def get_current_activity(self):
+        """Получить текущую активность"""
+        current_time = datetime.datetime.now().time()
+        
+        for i, activity in enumerate(self.activities):
+            try:
+                activity_time = datetime.datetime.strptime(activity.time, "%H:%M").time()
+                next_time = (datetime.datetime.strptime(
+                    self.activities[i+1].time, "%H:%M"
+                ) if i+1 < len(self.activities) else datetime.time(23, 59)).time()
+                
+                if activity_time <= current_time < next_time:
+                    return activity
+            except:
+                continue
+        return None
+
+
+def main():
+    schedule = DaySchedule()
+    
+    while True:
+        print("\n" + "="*50)
+        print("УПРАВЛЕНИЕ РАСПОРЯДКОМ ДНЯ")
+        print("="*50)
+        print("1. Показать расписание")
+        print("2. Отметить активность как выполненную")
+        print("3. Добавить новую активность")
+        print("4. Показать текущую активность")
+        print("5. Автоматическое обновление (каждые 60 секунд)")
+        print("6. Выход")
+        
+        choice = input("\nВыберите действие (1-6): ")
+        
+        if choice == "1":
+            schedule.display_schedule()
+        
+        elif choice == "2":
+            schedule.display_schedule(show_current=False)
+            try:
+                index = int(input("Введите номер активности для отметки (0-{}): ".format(len(schedule.activities)-1)))
+                schedule.mark_completed(index)
+            except:
+                print("Неверный ввод!")
+        
+        elif choice == "3":
+            time_input = input("Введите время (формат ЧЧ:ММ): ")
+            description = input("Введите описание активности: ")
+            schedule.add_activity(time_input, description)
+        
+        elif choice == "4":
+            current = schedule.get_current_activity()
+            if current:
+                print(f"\nТекущая активность: {current.time} - {current.description}")
+                if current.completed:
+                    print("Статус: ✓ Выполнено")
+                else:
+                    print("Статус: ○ В процессе")
+            else:
+                print("Текущая активность не определена")
+        
+        elif choice == "5":
+            print("\nАвтоматическое обновление каждые 60 секунд")
+            print("Нажмите Ctrl+C для остановки")
+            try:
+                while True:
+                    schedule.display_schedule()
+                    time.sleep(60)
+                    print("\n" + "="*50)
+            except KeyboardInterrupt:
+                print("\nАвтоматическое обновление остановлено")
+        
+        elif choice == "6":
+            print("До свидания!")
+            break
+        
+        else:
+            print("Неверный выбор. Попробуйте снова.")
+
+
+if __name__ == "__main__":
+    main()
